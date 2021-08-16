@@ -16,8 +16,12 @@
     }
     */
 
+    .pref {
+      fill: white;
+    }
+
     .pref01 {
-      fill: aquamarine;
+      fill: aquamarine !important;
     }
   </style>
 </head>
@@ -31,7 +35,12 @@
     var scale = 1200;
 
     // https://github.com/niiyz/JapanCityGeoJson
-    d3.json("./japan.geojson", function (japan) {
+    var PromiseWrapper = (xhr, d) => new Promise(resolve => xhr(d, (p) => resolve(p)))
+
+    Promise.all([PromiseWrapper(d3.json, "./japan.geojson"), PromiseWrapper(d3.csv, "./label.csv")])
+      .then(resolve => { createMap(resolve[0], resolve[1]) })
+
+    function createMap(japan, labels) {
       var aProjection = d3.geoMercator()
         .center([136.0, 35.6])
         .translate([width / 2, height / 2])
@@ -51,19 +60,38 @@
         .style("stroke-width", 0.2)
         ;
 
+      var map_label = svg.selectAll("text").data(labels)
+        .enter()
+        .append("text")
+        .text((d) => { return d.label })
+        .attr("x", d => { return aProjection([d.lon, d.lat])[0] })
+        .attr("y", d => { return (aProjection([d.lon, d.lat])[1] - 10) })
+        .attr("text-anchor", "middle")
+        .attr('font-size', '8pt');
+
       svg.call(d3.zoom().on('zoom', function () {
         aProjection.scale(scale * d3.event.transform.k);
         map.attr('d', geoPath);
+
+        map_label.attr("x", d => { return aProjection([d.x, d.y])[0] })
+          .attr("y", d => { return (aProjection([d.x, d.y])[1] - 10) })
+          .attr("text-anchor", "middle")
+          .attr('font-size', '8pt');
       }));
 
       map.call(d3.drag().on('drag', function () {
         var tl = aProjection.translate();
         aProjection.translate([tl[0] + d3.event.dx, tl[1] + d3.event.dy]);
         map.attr('d', geoPath);
+
+        map_label.attr("x", d => { return aProjection([d.x, d.y])[0] })
+          .attr("y", d => { return (aProjection([d.x, d.y])[1] - 10) })
+          .attr("text-anchor", "middle")
+          .attr('font-size', '8pt');
       }));
 
-      document.getElementById("pref02").setAttribute("fill", "turquoise");
-    });
+      document.getElementById("pref02").setAttribute("style", "fill: turquoise !important;");
+    }
   </script>
 </body>
 
